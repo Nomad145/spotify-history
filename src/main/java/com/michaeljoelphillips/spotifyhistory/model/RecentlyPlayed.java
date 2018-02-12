@@ -12,8 +12,8 @@ public class RecentlyPlayed {
 
   public List<Item> getNewTracksSinceLastPlayed(Date date) {
     List<Item> newTracks = items.stream()
-      .filter(i -> i.playedAt.getValue() > date.getTime())
-      .collect(Collectors.toList());
+        .filter(i -> i.playedAt.getValue() / 1000 > date.getTime() / 1000)
+        .collect(Collectors.toList());
 
     return newTracks;
   }

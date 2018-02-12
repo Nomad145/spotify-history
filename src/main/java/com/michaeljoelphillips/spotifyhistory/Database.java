@@ -21,7 +21,7 @@ public class Database {
   public Optional<Date> getLastPlayedTime() throws SQLException {
     Statement statement = connection.createStatement();
     ResultSet result = statement.executeQuery(
-        "SELECT last_played FROM tracks ORDER BY id DESC LIMIT 1"
+        "SELECT last_played FROM tracks ORDER BY last_played DESC LIMIT 1"
     );
 
     if (result.first()) {
