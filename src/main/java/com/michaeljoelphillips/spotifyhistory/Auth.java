@@ -1,6 +1,6 @@
 package com.michaeljoelphillips.spotifyhistory;
 
-import static java.util.Base64.Encoder;
+import java.util.Base64.Encoder;
 
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpHeaders;
@@ -13,7 +13,7 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.JsonObjectParser;
 import com.google.api.client.json.jackson2.JacksonFactory;
-import com.michaeljoelphillips.spotifyhistory.AuthCredentials;
+import com.michaeljoelphillips.spotifyhistory.ApiToken;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -26,47 +26,40 @@ import java.util.Base64;
 import java.util.HashMap;
 
 public class Auth {
-  private static String clientId;
+  private String redirectUrl = "http://localhost:9000";
 
-  private static String secretKey;
+  private final NetHttpTransport client = new NetHttpTransport();
 
-  private static String authCode;
+  private final JsonFactory jsonFactory = new JacksonFactory();
 
-  private static String redirectUrl = "http://localhost:9000";
+  private final File savedToken = new File("/home/nomad/.config/spotify/token.json");
 
-  private static final NetHttpTransport client = new NetHttpTransport();
+  private Credentials credentials;
 
-  private static final JsonFactory jsonFactory = new JacksonFactory();
-
-  private static final File savedCredentials = new File("/home/nomad/.config/spotify/token.json");
-
-  public static AuthCredentials getAuthCredentials() throws IOException {
-    try {
-      return getCredentialsFromFile();
-    } catch (Exception e) {
-      AuthCredentials credentials = getCredentialsFromSpotify();
-      writeCredentialsToFile(credentials);
-
-      return credentials;
-    }
+  public Auth(Credentials credentials) {
+    this.credentials = credentials;
   }
 
-  private static AuthCredentials getCredentialsFromFile()
-      throws FileNotFoundException, IOException {
+  public ApiToken getApiToken() throws IOException {
+    ApiToken token = refreshToken(readTokenFromFile());
 
+    return token;
+  }
+
+  private ApiToken readTokenFromFile() throws FileNotFoundException, IOException {
     JsonObjectParser parser = new JsonObjectParser(jsonFactory);
 
-    AuthCredentials credentials = parser.parseAndClose(
-        new FileReader(savedCredentials),
-        AuthCredentials.class
+    ApiToken token = parser.parseAndClose(
+        new FileReader(savedToken),
+        ApiToken.class
     );
 
-    return credentials;
+    return token;
   }
 
-  private static AuthCredentials getCredentialsFromSpotify() throws IOException {
+  private ApiToken refreshToken(ApiToken token) throws IOException {
     HttpRequestFactory factory = getRequestFactory();
-    HashMap<String, String> authPayload = getContentPayload();
+    HashMap<String, String> authPayload = buildContentPayload(token);
 
     HttpRequest authRequest = factory.buildPostRequest(
         new GenericUrl("https://accounts.spotify.com/api/token"),
@@ -75,26 +68,29 @@ public class Auth {
 
     HttpResponse authResponse = authRequest.execute();
 
-    return authResponse.parseAs(AuthCredentials.class);
+    ApiToken refreshedToken = authResponse.parseAs(ApiToken.class);
+    token.accessToken = refreshedToken.accessToken;
+
+    writeTokenToFile(token);
+
+    return token;
   }
 
-  private static void writeCredentialsToFile(AuthCredentials credentials) throws IOException {
-    String json = jsonFactory.toPrettyString(credentials);
+  private void writeTokenToFile(ApiToken token) throws IOException {
+    String json = jsonFactory.toPrettyString(token);
 
-    FileWriter writer = new FileWriter(savedCredentials);
+    FileWriter writer = new FileWriter(savedToken);
 
     writer.write(json, 0, json.length());
     writer.close();
   }
 
-  private static HttpRequestFactory getRequestFactory() {
+  private HttpRequestFactory getRequestFactory() {
     HttpRequestFactory factory = client.createRequestFactory(
         new HttpRequestInitializer() {
           public void initialize(HttpRequest request) {
-            String encodedCredentials = encodeCredentials();
-
             HttpHeaders headers = request.getHeaders();
-            headers.setAuthorization("Basic " + encodedCredentials);
+            headers.setAuthorization("Basic " + credentials.getCredentials());
 
             request.setParser(new JsonObjectParser(jsonFactory));
           }
@@ -104,20 +100,11 @@ public class Auth {
     return factory;
   }
 
-  private static String encodeCredentials() {
-    String credentials = String.format("%s:%s", clientId, secretKey);
-
-    Encoder encoder = Base64.getEncoder();
-
-    return encoder.encodeToString(credentials.getBytes());
-  }
-
-  private static HashMap<String, String> getContentPayload(){
+  private HashMap<String, String> buildContentPayload(ApiToken token) {
     HashMap<String, String> authPayload = new HashMap<String, String>(3);
 
-    authPayload.put("code", authCode);
-    authPayload.put("grant_type", "authorization_code");
-    authPayload.put("redirect_uri", redirectUrl);
+    authPayload.put("refresh_token", token.refreshToken);
+    authPayload.put("grant_type", "refresh_token");
 
     return authPayload;
   }

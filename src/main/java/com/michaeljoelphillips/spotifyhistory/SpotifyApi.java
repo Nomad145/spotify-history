@@ -12,12 +12,12 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 
 import java.io.IOException;
 
-import com.michaeljoelphillips.spotifyhistory.AuthCredentials;
+import com.michaeljoelphillips.spotifyhistory.ApiToken;
 import com.michaeljoelphillips.spotifyhistory.model.RecentlyPlayed;
 import com.michaeljoelphillips.spotifyhistory.request.RecentlyPlayedUrl;
 
 public class SpotifyApi {
-  private AuthCredentials credentials;
+  private ApiToken credentials;
 
   private HttpRequestFactory requestFactory;
 
@@ -25,7 +25,7 @@ public class SpotifyApi {
 
   private final JsonFactory jsonFactory = new JacksonFactory();
 
-  public SpotifyApi(AuthCredentials credentials) {
+  public SpotifyApi(ApiToken credentials) {
     this.credentials = credentials;
     requestFactory = buildRequestFactory();
   }

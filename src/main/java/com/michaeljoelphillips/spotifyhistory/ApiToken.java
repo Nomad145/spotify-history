@@ -2,7 +2,7 @@ package com.michaeljoelphillips.spotifyhistory;
 
 import com.google.api.client.util.Key;
 
-public class AuthCredentials {
+public class ApiToken {
   @Key("access_token")
   public String accessToken;
 
